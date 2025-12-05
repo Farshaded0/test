@@ -7,44 +7,45 @@ on:
 
 jobs:
   build:
-    runs-on: macos-14
+    runs-on: macos-15  # Use macOS 15 which has Xcode 16
     
     steps:
     - uses: actions/checkout@v4
-
+    
     # Force .NET 8 SDK
     - name: Create global.json
       run: |
         echo '{"sdk":{"version": "8.0.400", "rollForward": "latestFeature"}}' > global.json
-
+    
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 8.0.x
-
+    
     - name: Install MAUI Workload
       run: dotnet workload install maui
-
+    
     - name: Restore Dependencies
       run: dotnet restore
-
-    # FIXED: Removed 'PublishTrimmed=false' and kept 'MtouchLink=None'
+    
+    # Disable trimming and linking to avoid Xcode version issues
     - name: Publish .NET MAUI iOS
       run: |
         dotnet publish -f net8.0-ios -c Release -r ios-arm64 \
         -p:ArchiveOnBuild=false \
         -p:EnableCodeSigning=false \
         -p:_RequiresIpaSigning=false \
-        -p:MtouchLink=None
-
+        -p:MtouchLink=None \
+        -p:PublishTrimmed=false
+    
     - name: Package into IPA
       run: |
-        cd bin/Release/net8.0-ios/ios-arm64/publish/
+        cd MauiScraperApp/bin/Release/net8.0-ios/ios-arm64/publish/
         mkdir Payload
         mv *.app Payload/
         zip -r MauiScraperApp.ipa Payload
         mv MauiScraperApp.ipa ../../../../../
-
+    
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
