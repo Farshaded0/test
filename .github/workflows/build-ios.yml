@@ -37,16 +37,8 @@ jobs:
         -p:_RequiresIpaSigning=false \
         -p:MtouchLink=None
     
-    - name: Package into IPA
-      run: |
-        cd MauiScraperApp/bin/Release/net8.0-ios/ios-arm64/publish/
-        mkdir Payload
-        mv *.app Payload/
-        zip -r MauiScraperApp.ipa Payload
-        mv MauiScraperApp.ipa ../../../../../
-    
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
         name: MauiScraperApp-iOS
-        path: MauiScraperApp.ipa
+        path: MauiScraperApp/bin/Release/net8.0-ios/ios-arm64/publish/MauiScraperApp.ipa
