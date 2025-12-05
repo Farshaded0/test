@@ -7,10 +7,15 @@ on:
 
 jobs:
   build:
-    runs-on: macos-14 # Uses a fast Apple Silicon Cloud Mac
+    runs-on: macos-14 # Uses Apple Silicon
     
     steps:
     - uses: actions/checkout@v4
+
+    # NEW STEP: Force the environment to use .NET 8.0 SDK and ignore .NET 10
+    - name: Create global.json
+      run: |
+        echo '{"sdk":{"version": "8.0.400", "rollForward": "latestFeature"}}' > global.json
 
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
@@ -24,7 +29,6 @@ jobs:
       run: dotnet restore
 
     # 1. Publish the App (Generates the .app file)
-    # We disable signing checks here so it builds without an Apple ID
     - name: Publish .NET MAUI iOS
       run: |
         dotnet publish -f net8.0-ios -c Release -r ios-arm64 \
@@ -32,26 +36,25 @@ jobs:
         -p:EnableCodeSigning=false \
         -p:_RequiresIpaSigning=false
 
-    # 2. Create the IPA structure manually (Required for AltStore/Sideloading)
-    # This takes the raw binary and wraps it in the format iPhone expects
+    # 2. Create the IPA structure manually
     - name: Package into IPA
       run: |
-        # Go to the build output
+        # Find the generated .app file
         cd bin/Release/net8.0-ios/ios-arm64/publish/
         
-        # Create the Payload folder (Apple standard requirement)
+        # Create Payload folder
         mkdir Payload
         
-        # Move the app bundle into Payload
+        # Move the .app into Payload
         mv *.app Payload/
         
-        # Zip it to create the IPA
+        # Zip it up to create the IPA
         zip -r MauiScraperApp.ipa Payload
         
-        # Move it up to the root so the upload step can find it
+        # Move it to a known location for upload
         mv MauiScraperApp.ipa ../../../../../
 
-    # 3. Upload the IPA so you can download it from GitHub
+    # 3. Upload the IPA
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
