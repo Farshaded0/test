@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using Newtonsoft.Json;
@@ -14,22 +14,55 @@ public class RemoteClientService
 
     public RemoteClientService()
     {
-        _httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+        _httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+        
+        // CRITICAL: Cloudflare often blocks requests without a User Agent
+        _httpClient.DefaultRequestHeaders.Add("User-Agent", "MauiScraperApp/1.0");
     }
 
-    public async Task<bool> ConnectAsync(string ip, int port = 5000)
+    public async Task<bool> ConnectAsync(string host, int port = 5000)
     {
-        var url = $"http://{ip}:{port}";
-        try {
-            var response = await _httpClient.GetAsync($"{url}/api/torrent/ping");
-            if (response.IsSuccessStatusCode) {
-                _serverUrl = url; 
-                IsConnected = true;
-                Preferences.Set("last_ip", ip); 
-                Preferences.Set("last_port", port);
-                return true;
+        string url;
+
+        // LOGIC: Check if the input is a Domain Name (Cloudflare) or an IP (Local)
+        // If it has a dot and isn't an IP, assume it's a domain requiring HTTPS
+        if (Uri.CheckHostName(host) != UriHostNameType.IPv4 && host.Contains("."))
+        {
+            // Cloudflare Tunnel -> Force HTTPS, Default Port (443 implied)
+            url = $"https://{host}"; 
+        }
+        else
+        {
+            // Local Network -> Force HTTP, Use specified Port
+            url = $"http://{host}:{port}";
+        }
+
+        try 
+        {
+            // Use a cancellation token to respect the timeout
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            var response = await _httpClient.GetAsync($"{url}/api/torrent/ping", cts.Token);
+            
+            if (response.IsSuccessStatusCode) 
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                if (content.Contains("online"))
+                {
+                    _serverUrl = url; 
+                    IsConnected = true;
+                    
+                    // Save the inputs for next time
+                    Preferences.Set("last_ip", host); 
+                    Preferences.Set("last_port", port);
+                    return true;
+                }
             }
-        } catch { }
+        } 
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Connection Failed: {ex.Message}");
+        }
+        
         IsConnected = false; 
         return false;
     }
@@ -42,7 +75,7 @@ public class RemoteClientService
 
     public void Disconnect() { _serverUrl = null; IsConnected = false; }
 
-    // Restored Discovery Logic
+    // Restored Discovery Logic (Only works for Local LAN)
     public async Task<List<string>> DiscoverServersAsync()
     {
         var discovered = new List<string>();
@@ -53,8 +86,7 @@ public class RemoteClientService
         var prefix = localIp.Substring(0, localIp.LastIndexOf('.') + 1);
         var tasks = new List<Task>();
 
-        // Scan range (Scanning 1-255 is slow, you might want to limit this or use UDP broadcast in future)
-        // For now, we scan quickly with short timeout
+        // Scan range 
         for (int i = 1; i < 255; i++)
         {
             var ip = prefix + i;
