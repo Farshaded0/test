@@ -58,7 +58,15 @@ public partial class ConnectionViewModel : ObservableObject
                 // Auto-Navigate on Main Thread
                 MainThread.BeginInvokeOnMainThread(async () =>
                 {
-                    await Shell.Current.GoToAsync("//MainTabs");
+                    var mainTabs = Shell.Current.Items.FirstOrDefault(i => i.Route == "MainTabs");
+                    if (mainTabs != null)
+                    {
+                        Shell.Current.CurrentItem = mainTabs;
+                    }
+                    else
+                    {
+                        await Shell.Current.DisplayAlert("Error", "Could not find MainTabs route", "OK");
+                    }
                 });
             }
             else
@@ -91,7 +99,15 @@ public partial class ConnectionViewModel : ObservableObject
                 // Absolute routing to the TabBar - Ensure on Main Thread
                 MainThread.BeginInvokeOnMainThread(async () =>
                 {
-                    await Shell.Current.GoToAsync("//MainTabs");
+                    var mainTabs = Shell.Current.Items.FirstOrDefault(i => i.Route == "MainTabs");
+                    if (mainTabs != null)
+                    {
+                        Shell.Current.CurrentItem = mainTabs;
+                    }
+                    else
+                    {
+                        await Shell.Current.DisplayAlert("Error", "Could not find MainTabs route", "OK");
+                    }
                 });
             }
             catch (Exception ex)
