@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MauiScraperApp.Services;
@@ -46,15 +46,16 @@ public partial class DownloadsViewModel : ObservableObject
     {
         if (!_remoteClient.IsConnected)
         {
-            StatusMessage = "Not connected to PC";
+            MainThread.BeginInvokeOnMainThread(() => StatusMessage = "Not connected to PC");
             return;
         }
 
         try
         {
-            // Get fresh data
+            // Get fresh data (Network call - Background OK)
             var freshData = await _remoteClient.GetTorrentsAsync();
 
+            // UI Updates - MUST be Main Thread
             MainThread.BeginInvokeOnMainThread(() =>
             {
                 MergeData(freshData);
@@ -64,7 +65,7 @@ public partial class DownloadsViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            StatusMessage = $"Error: {ex.Message}";
+            MainThread.BeginInvokeOnMainThread(() => StatusMessage = $"Error: {ex.Message}");
         }
     }
 
