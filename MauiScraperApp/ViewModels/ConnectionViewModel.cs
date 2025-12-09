@@ -60,20 +60,26 @@ public partial class ConnectionViewModel : ObservableObject
                 IsConnected = true;
                 StatusMessage = $"Connected to {ServerIp}:{port}";
                 
-                if (_debugMode) 
-                    await Shell.Current.DisplayAlert("Debug", "Connection OK. Navigating...", "OK");
-                
-                // Auto-Navigate - Force MainThread for safety
-                MainThread.BeginInvokeOnMainThread(async () => 
+                // FORCE NAV on Main Thread using CurrentItem (Object-based, not String-based)
+                MainThread.BeginInvokeOnMainThread(() => 
                 {
                     try 
                     {
-                        // Changed to Deep Linking
-                        await Shell.Current.GoToAsync("//MainTabs/SearchView"); 
+                        var tabBar = Shell.Current.Items.FirstOrDefault(i => i.Route?.Contains("MainTabs") == true);
+                        if (tabBar != null)
+                        {
+                            Shell.Current.CurrentItem = tabBar;
+                        }
+                        else
+                        {
+                             // Fallback if route finding fails - just take the second item (index 1) which is usually the TabBar
+                             if (Shell.Current.Items.Count > 1) 
+                                 Shell.Current.CurrentItem = Shell.Current.Items[1];
+                        }
                     }
                     catch (Exception ex)
                     {
-                         await Shell.Current.DisplayAlert("Auto-Nav Error", ex.ToString(), "OK");
+                         Shell.Current.DisplayAlert("Auto-Connect Nav Error", ex.Message, "OK");
                     }
                 });
             }
@@ -98,25 +104,30 @@ public partial class ConnectionViewModel : ObservableObject
     [RelayCommand]
     private async Task ContinueToApp()
     {
-        // DEBUG: Proves the button is being clicked
-        if (_debugMode) 
-            await Shell.Current.DisplayAlert("Debug", $"Button Clicked.\nIsConnected: {IsConnected}", "OK");
-
         if (IsConnected)
         {
-            // Force MainThread to prevent any background thread navigation crashes
             MainThread.BeginInvokeOnMainThread(async () =>
             {
                 try
                 {
-                    if (_debugMode) await Shell.Current.DisplayAlert("Info", "Attempting Nav to //MainTabs/SearchView", "OK");
+                    if (_debugMode) await Shell.Current.DisplayAlert("Info", "Attempting Object-Switch to MainTabs", "OK");
                     
-                    // Changed to Deep Linking
-                    await Shell.Current.GoToAsync("//MainTabs/SearchView");
+                    var tabBar = Shell.Current.Items.FirstOrDefault(i => i.Route?.Contains("MainTabs") == true);
+                    if (tabBar != null)
+                    {
+                         Shell.Current.CurrentItem = tabBar;
+                    }
+                    else
+                    {
+                         // Fallback by Index
+                         if (Shell.Current.Items.Count > 1) 
+                             Shell.Current.CurrentItem = Shell.Current.Items[1];
+                         else
+                             await Shell.Current.DisplayAlert("Error", "Could not find MainTabs in Shell Items", "OK");
+                    }
                 }
                 catch (Exception ex)
                 {
-                    // Catch routing errors (e.g., if MainTabs isn't found)
                     await Shell.Current.DisplayAlert("Nav Error", ex.Message, "OK");
                 }
             });
