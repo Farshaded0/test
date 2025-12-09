@@ -2,25 +2,19 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MauiScraperApp.Services;
-
 namespace MauiScraperApp.ViewModels;
-
 public partial class ConnectionViewModel : ObservableObject
 {
     private readonly RemoteClientService _remoteClient;
-
     [ObservableProperty] private string _serverIp = "";
     [ObservableProperty] private string _serverPort = "5000";
     [ObservableProperty] private bool _isConnecting;
     [ObservableProperty] private bool _isScanning;
     [ObservableProperty] private bool _isConnected;
     [ObservableProperty] private string _statusMessage = "";
-
     // DEBUG MODE: Set to TRUE to see alerts on the iPhone
     private bool _debugMode = true;
-
     public ObservableCollection<string> DiscoveredServers { get; } = new();
-
     public ConnectionViewModel(RemoteClientService remoteClient)
     {
         _remoteClient = remoteClient;
@@ -38,7 +32,6 @@ public partial class ConnectionViewModel : ObservableObject
         }
         IsConnected = _remoteClient.IsConnected;
     }
-
     [RelayCommand]
     private async Task ConnectAsync()
     {
@@ -47,14 +40,11 @@ public partial class ConnectionViewModel : ObservableObject
             await Shell.Current.DisplayAlert("Error", "Invalid IP or Port", "OK");
             return;
         }
-
         try
         {
             IsConnecting = true;
             StatusMessage = "Connecting...";
-
             bool success = await _remoteClient.ConnectAsync(ServerIp, port);
-
             if (success)
             {
                 IsConnected = true;
@@ -63,8 +53,13 @@ public partial class ConnectionViewModel : ObservableObject
                 if (_debugMode) 
                     await Shell.Current.DisplayAlert("Debug", "Connection OK. Navigating...", "OK");
                 
-                // Auto-Navigate
-                await Shell.Current.GoToAsync("//MainTabs");
+                // Allow UI to settle (Fix for iOS silent failure)
+                await Task.Delay(100);
+                // Auto-Navigate on Main Thread
+                MainThread.BeginInvokeOnMainThread(async () =>
+                {
+                    await Shell.Current.GoToAsync("//MainTabs");
+                });
             }
             else
             {
@@ -83,20 +78,21 @@ public partial class ConnectionViewModel : ObservableObject
             IsConnecting = false;
         }
     }
-
     [RelayCommand]
     private async Task ContinueToApp()
     {
         // DEBUG: Proves the button is being clicked
         if (_debugMode) 
             await Shell.Current.DisplayAlert("Debug", $"Button Clicked.\nIsConnected: {IsConnected}", "OK");
-
         if (IsConnected)
         {
             try
             {
-                // Absolute routing to the TabBar
-                await Shell.Current.GoToAsync("//MainTabs");
+                // Absolute routing to the TabBar - Ensure on Main Thread
+                MainThread.BeginInvokeOnMainThread(async () =>
+                {
+                    await Shell.Current.GoToAsync("//MainTabs");
+                });
             }
             catch (Exception ex)
             {
@@ -109,7 +105,6 @@ public partial class ConnectionViewModel : ObservableObject
             await Shell.Current.DisplayAlert("Disconnected", "Please connect to the PC first.", "OK");
         }
     }
-
     [RelayCommand]
     private async Task ScanNetworkAsync()
     {
@@ -118,15 +113,12 @@ public partial class ConnectionViewModel : ObservableObject
             IsScanning = true;
             StatusMessage = "Scanning network...";
             DiscoveredServers.Clear();
-
             // Explicit List<string> to avoid ambiguity
             List<string> servers = await _remoteClient.DiscoverServersAsync();
-
             foreach (var server in servers)
             {
                 DiscoveredServers.Add(server);
             }
-
             if (servers.Count > 0)
                 StatusMessage = $"Found {servers.Count} server(s)";
             else
@@ -141,14 +133,12 @@ public partial class ConnectionViewModel : ObservableObject
             IsScanning = false;
         }
     }
-
     [RelayCommand]
     private void SelectServer(string ip)
     {
         ServerIp = ip;
         StatusMessage = $"Selected {ip}";
     }
-
     [RelayCommand]
     private void Disconnect()
     {
