@@ -66,7 +66,15 @@ public partial class ConnectionViewModel : ObservableObject
                 // Auto-Navigate - Force MainThread for safety
                 MainThread.BeginInvokeOnMainThread(async () => 
                 {
-                    await Shell.Current.GoToAsync("//MainTabs");
+                    try 
+                    {
+                        // Changed to Deep Linking
+                        await Shell.Current.GoToAsync("//MainTabs/SearchView"); 
+                    }
+                    catch (Exception ex)
+                    {
+                         await Shell.Current.DisplayAlert("Auto-Nav Error", ex.ToString(), "OK");
+                    }
                 });
             }
             else
@@ -101,8 +109,10 @@ public partial class ConnectionViewModel : ObservableObject
             {
                 try
                 {
-                    // Absolute routing to the TabBar
-                    await Shell.Current.GoToAsync("//MainTabs");
+                    if (_debugMode) await Shell.Current.DisplayAlert("Info", "Attempting Nav to //MainTabs/SearchView", "OK");
+                    
+                    // Changed to Deep Linking
+                    await Shell.Current.GoToAsync("//MainTabs/SearchView");
                 }
                 catch (Exception ex)
                 {
