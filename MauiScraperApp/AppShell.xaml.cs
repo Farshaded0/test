@@ -5,9 +5,11 @@ public partial class AppShell : Shell
     public AppShell()
     {
         InitializeComponent();
+
+        // FIX: Removed "MainTabs" registration. 
+        // Since it is defined in XAML, registering it here breaks iOS navigation.
         
-        // FIX: Removed manual Route Registration. 
-        // The Routes are already defined in AppShell.xaml.
-        // Registering them here again causes conflicts on iOS.
+        // Register other specific pages if needed (e.g., specific detail pages), 
+        // but NOT the primary tab bar.
     }
 }
